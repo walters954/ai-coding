@@ -1,14 +1,32 @@
-# ai-coding
+<p align="center">
+  <a href="https://revenueeng.com">
+    <img src="assets/warren.jpg" alt="Warren Walters" width="140" style="border-radius:50%">
+  </a>
+</p>
 
-The Claude Code skills and config I actually use to ship code.
+<h1 align="center">ai-coding</h1>
 
-I write everything in Claude Code, usually with several work streams going at once in separate
-worktrees. That's great for throughput and terrible for attention: by the third parallel stream
-you are skimming diffs instead of reading them. These are the guardrails I built so that stops
-being a problem.
+<p align="center">
+  The Claude Code skills and config I actually use to ship code.
+</p>
+
+<p align="center">
+  <a href="https://revenueeng.com"><b>Newsletter</b></a> &nbsp;·&nbsp;
+  <a href="https://www.youtube.com/@Walters954"><b>YouTube</b></a>
+</p>
+
+---
+
+I'm Warren. I write everything in Claude Code, usually with several work streams going at once in
+separate worktrees. That's great for throughput and terrible for attention: by the third parallel
+stream you are skimming diffs instead of reading them. These are the guardrails I built so that
+stops being a problem.
 
 Everything here is small, editable, and meant to be forked. Take what's useful, change what
 isn't, delete the rest.
+
+I break down how I use these on [YouTube](https://www.youtube.com/@Walters954), and write up the
+ones that earn their keep in [the newsletter](https://revenueeng.com).
 
 ## Skills
 
@@ -54,11 +72,6 @@ review is what moved it into the codebase.
 
 Treat any review output as claims to verify, never as truth to apply. These models are just as
 confident when they're wrong.
-
-## Prior art
-
-Shaped by [mattpocock/skills](https://github.com/mattpocock/skills), which is worth reading
-whether or not you use anything here.
 
 ## License
 
