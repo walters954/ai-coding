@@ -34,6 +34,12 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | --- | --- |
 | [`codex-code-review`](skills/codex-code-review/SKILL.md) | Runs the OpenAI Codex CLI as an independent, read-only second-opinion review of a diff before it becomes a PR, then triages the findings instead of applying them blindly. |
 
+## Projects & Demos
+
+| Project | What it does | Tech Stack |
+| --- | --- | --- |
+| [`jev-account-dedupe`](projects/jev-account-dedupe) | CRM Account Deduplication using Jev System One evaluation model on Vercel AI Gateway & TypeSafe AI. Evaluates duplicates with zero generation tokens, ~50–100ms latency, collapsible presentation panels, and live cost comparison vs traditional LLMs. | Next.js 16, TypeScript, TypeSafe AI SDK, Vercel AI SDK, Tailwind CSS |
+
 More to come: worktree setup, close-out, and my `CLAUDE.md` conventions.
 
 ## Install
