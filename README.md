@@ -34,6 +34,12 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | --- | --- |
 | [`codex-code-review`](skills/codex-code-review/SKILL.md) | Runs the OpenAI Codex CLI as an independent, read-only second-opinion review of a diff before it becomes a PR, then triages the findings instead of applying them blindly. |
 
+## Guards
+
+| Guard | What it does |
+| --- | --- |
+| [`claude-bash-privacy`](guards/claude-bash-privacy/README.md) | Narrow, fake-tested Claude Code Bash checks for common diagnostic dumps and explicit curl secret disclosures. Includes a selective installer/uninstaller, rollback, coverage gaps, and a verified Mac profile. Other hosts and Codex/browser/MCP coverage are not enabled. |
+
 ## Projects & Demos
 
 | Project | What it does | Tech Stack |
