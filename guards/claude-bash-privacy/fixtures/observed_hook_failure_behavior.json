@@ -1,0 +1,25 @@
+{
+  "record": "Public-safe summary of one observed real Claude Code run. Not produced or proven by the unit tests.",
+  "recorded": "2026-10-25",
+  "claude_code_version": "2.1.310",
+  "permission_mode": "normal",
+  "test_only_hook_on_failure": "block",
+  "candidate_commands": 11,
+  "real_external_requests": false,
+  "cases": [
+    {"case": "truncated-stdout", "hook_stdout": "{", "hook_exit": 0, "blocked": false, "note": "Fell through to ordinary permissions, which prompted; inert marker ran only after explicit one-time approval.", "local_fixture": "fixtures/truncated_stdout.py"},
+    {"case": "invalid-schema-decision", "hook_exit": 0, "blocked": true, "local_fixture": "fixtures/invalid_schema_stdout.py"},
+    {"case": "crash", "hook_exit": 1, "blocked": true},
+    {"case": "timeout", "blocked": true},
+    {"case": "ask-denied", "blocked": true, "note": "Test-only ask dialog was denied."},
+    {"case": "production-environment-dump", "blocked": true, "note": "Installed production rule; local stub."},
+    {"case": "production-process-argv", "blocked": true, "note": "Installed production rule; local stub."},
+    {"case": "production-private-upload", "blocked": true, "note": "Installed production rule; local curl stub, no request."},
+    {"case": "ordinary", "blocked": false},
+    {"case": "ambiguous", "blocked": false},
+    {"case": "authorization-header", "blocked": false}
+  ],
+  "global_settings_byte_identical": true,
+  "installed_runtime_byte_identical": true,
+  "preexisting_enrollment_markers_retained": true
+}

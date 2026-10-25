@@ -46,6 +46,12 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 
 Both use Python's standard library and the authenticated GitHub CLI. Reports describe observed signals; they never authorize a merge. [Offline tests and synthetic output](tools/github-status/README.md#offline-tests-and-example-output) are included.
 
+## Guards
+
+| Guard | What it does |
+| --- | --- |
+| [`claude-bash-privacy`](guards/claude-bash-privacy/README.md) | Narrow, fake-tested Claude Code Bash checks for common diagnostic dumps and explicit curl secret disclosures. Includes a selective installer/uninstaller, rollback, coverage gaps, and a verified Mac profile. Other hosts and Codex/browser/MCP coverage are not enabled. |
+
 ## Projects & Demos
 
 | Project | What it does | Tech Stack |

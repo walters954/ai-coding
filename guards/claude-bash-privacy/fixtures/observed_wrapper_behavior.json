@@ -1,0 +1,51 @@
+{
+  "record": "Observed actual Claude wrapper test, not generated or proven by unit tests.",
+  "recorded": "2026-10-25",
+  "claude_code_version": "2.1.310",
+  "permission_mode": "default",
+  "runner_sha256": "c0969cea29fe47045b921c8428edc434d30527f83547b423ee8aac08dd7b60c5",
+  "installation": "disposable project-local harness only; global v1 unchanged",
+  "cases": [
+    {
+      "case": "pass",
+      "blocked": false,
+      "marker_present": true
+    },
+    {
+      "case": "deny",
+      "blocked": true,
+      "marker_present": false
+    },
+    {
+      "case": "truncated",
+      "blocked": true,
+      "marker_present": false
+    },
+    {
+      "case": "empty",
+      "blocked": true,
+      "marker_present": false
+    },
+    {
+      "case": "invalid",
+      "blocked": true,
+      "marker_present": false
+    },
+    {
+      "case": "timeout",
+      "blocked": true,
+      "marker_present": false
+    },
+    {
+      "case": "stderr",
+      "blocked": true,
+      "marker_present": false
+    }
+  ],
+  "normal_permission_approval": "one-time approval only for explicit pass",
+  "candidate_network_requests": false,
+  "real_private_data_used": false,
+  "global_settings_byte_identical": true,
+  "installed_v1_source_byte_identical": true,
+  "preexisting_enrollment_markers_retained": true
+}
