@@ -1,4 +1,8 @@
-"""Narrow Claude Bash guard. Never executes input, reads secrets, or logs payloads."""
+"""Narrow Claude Bash guard. Never executes input, reads secrets, or logs payloads.
+
+Default mode is the installed v1 hook protocol. --verdict is the internal protocol
+read only by the sibling runner.py; it never changes which commands are denied.
+"""
 import hashlib
 import json
 import os
@@ -88,6 +92,23 @@ def deny(rule):
     # Fixed reasons only. Do not echo input, URLs, paths, variable values, or errors.
     print(json.dumps({'hookSpecificOutput': {'hookEventName':'PreToolUse', 'permissionDecision':'deny', 'permissionDecisionReason': 'Privacy guard v1: '+rule+'. Use metadata-only diagnostics or remove private data from the request. Policy: agent-os/00-resources/claude-bash-privacy.md'}}))
 
+def verdict(rule):
+    # Internal runner.py protocol: exactly one canonical line for every invocation; empty is never a pass.
+    out = {'rule': rule, 'v': 1, 'verdict': 'deny'} if rule else {'v': 1, 'verdict': 'pass'}
+    sys.stdout.write(json.dumps(out, sort_keys=True, separators=(',', ':')) + '\n')
+    sys.stdout.flush()
+
+def inspect(event):
+    """Return a rule id or None. Unregistered sessions and other tools pass unchanged."""
+    if event.get('hook_event_name') != 'PreToolUse' or event.get('tool_name') != 'Bash':
+        return None
+    if not marker(event.get('session_id')).is_file():
+        return None
+    command = event.get('tool_input',{}).get('command')
+    if not isinstance(command,str):
+        raise ValueError('invalid command')
+    return decision(command)
+
 def main():
     try:
         raw = sys.stdin.buffer.read(LIMIT+1)
@@ -101,22 +122,18 @@ def main():
                 STATE.mkdir(mode=0o700, exist_ok=True)
                 p.touch(mode=0o600, exist_ok=True)
             return
-        if event.get('hook_event_name') != 'PreToolUse' or event.get('tool_name') != 'Bash':
-            return
-        if not marker(event.get('session_id')).is_file():
-            return
-        command = event.get('tool_input',{}).get('command')
-        if not isinstance(command,str):
-            raise ValueError('invalid command')
-        rule = decision(command)
-        if rule:
-            deny(rule)
+        rule = inspect(event)
     except Exception:
         # Runtime/schema failure blocks; no traceback or private input emitted.
         if '--session-start' in sys.argv:
             sys.stderr.write('Privacy guard session registration failed; new session coverage unavailable.\n')
             sys.exit(1)
-        deny('input-or-runtime-failure')
+        rule = 'input-or-runtime-failure'
+    if '--verdict' in sys.argv:
+        verdict(rule)
+    elif rule:
+        # Legacy v1 transport: exit-0 deny JSON, silent pass.
+        deny(rule)
 
 if __name__ == '__main__':
     main()

@@ -15,7 +15,7 @@ The 2026-10-24 record above did not test real model-generated Bash interception 
 
 ## Observed hook failure handling (recorded 2026-10-25)
 
-One real Claude Code 2.1.310 session ran in normal permission mode. It made 11 candidate Bash calls against inert local marker stubs. An additional test-only PreToolUse hook used `onFailure: block`. No real external request was made and no real secret was used. Guard denials returned only fixed rule diagnostics and did not echo fake payloads. Claude's own session transcript still records the fake candidate commands. A public-safe summary is in [fixtures/observed_hook_failure_behavior.json](fixtures/observed_hook_failure_behavior.json).
+One real Claude Code 2.1.310 session ran in normal permission mode. It made 11 candidate Bash calls against inert local marker stubs. An additional test-only PreToolUse hook used `onFailure: block`. Candidate commands made no external requests and used no real secrets. Guard denials returned only fixed rule diagnostics and did not echo fake payloads. Claude's own session transcript still records the fake candidate commands. A public-safe summary is in [fixtures/observed_hook_failure_behavior.json](fixtures/observed_hook_failure_behavior.json).
 
 | Case | Source | Result |
 | --- | --- | --- |
@@ -33,11 +33,33 @@ The timeout, crash, `ask`, schema, and truncated cases came from a test-only hoo
 
 The deterministic suite (`test_guard.py`, `test_hook_output.py`) does not emulate or prove Claude runner behavior. `test_hook_output.py` checks only that the fixtures reproduce the output shapes above and that `guard.py` serializes complete JSON for malformed fake input. Byte equality between `fixtures/invalid_schema_stdout.py` and the hook used in the run was not recorded. The truncated fixture matches the observed `{` exactly. The coordinator ran the snapshot suite and all 13 deterministic tests passed. That result covers fixture fidelity and production serialization only. It is not proof of runner behavior.
 
-### Residual risk and proposed mitigation (not implemented)
+## Validated wrapper follow-up (recorded 2026-10-25, not installed)
 
-The production guard emits valid JSON or nothing and catches input/runtime exceptions, so it should not produce truncated output in normal operation. No claim covers every future serialization or output corruption, for example an interrupted write. If that happened, the observed behavior is a fall-through to ordinary permissions, not a block.
+The source now includes `runner.py` and an explicit internal `guard.py --verdict` protocol. A pass must be a complete canonical line; empty output is a failure. The wrapper accepts only the fixed pass/deny byte strings, never echoes child diagnostics, emits no stdout, and uses exit 2 for every deny or failure. It reads at most 1 MiB of input, captures at most 256 bytes of child stdout in memory, rejects any child stderr, and has a 3-second child deadline below the configured 5-second outer hook deadline. The sibling checker path is fixed, the child environment is empty, and no shell or runtime checker selector is used.
 
-Proposed mitigation: a separate wrapper runs the guard, captures its stdout, and validates it before returning it. Output must be either empty or a complete, schema-valid PreToolUse object. On malformed output it exits nonzero with fixed text and no echoed input. The wrapper's own stdout is still a boundary and offers no absolute guarantee. It needs a test against the exact observed `{` fixture and approval for a safe rollout through the selective uninstall/install path. There is no current live change: `guard.py`, `manage.py`, and the installed runtime are unchanged.
+**Deterministic result: 32 tests passed**, including the original 13-test regression/docs baseline. Fake-checker cases cover explicit pass, all fixed denies, truncated/empty output, duplicate/extra keys, unknown rules, invalid schema/version, missing newline, repeated verdicts, non-canonical formatting, legacy v1 JSON, payload echo, nonzero child exit, stderr, timeout, excessive output, missing checker, and oversized input. Temporary real-guard integration covers startup-only enrollment, existing unregistered sessions, normal authenticated workflows, diagnostic/upload denials, and malformed input. Installer tests cover configuration preservation, refusing changed runtime files before overwriting either, and selective rollback/reinstall with unrelated files preserved. These tests do not emulate Claude's runner.
+
+A separate **actual Claude Code 2.1.310 session in normal permission mode** made seven Bash calls to inert marker stubs through an additional disposable project-local harness. Each case used an exact copy of the reviewed runner beside a fixed fake sibling checker. The harness forwarded the wrapper's exit status. The existing global v1 hook remained present; these marker commands did not match its deny rules. No candidate command performed a network request or accessed real private data.
+
+| Fixed checker output/behavior | Actual Claude result | Marker |
+| --- | --- | --- |
+| Canonical explicit pass | Normal permissions prompted; one-time approval selected | Present |
+| Canonical explicit deny | Blocked with fixed rule diagnostic | Absent |
+| Truncated `{`, exit 0 | Blocked with fixed check-failed diagnostic | Absent |
+| Empty output, exit 0 | Blocked | Absent |
+| Invalid verdict, exit 0 | Blocked | Absent |
+| Child timeout | Blocked | Absent |
+| Unexpected fake child stderr | Blocked; child sentinel not echoed | Absent |
+
+The tested runner SHA-256 is `c0969cea29fe47045b921c8428edc434d30527f83547b423ee8aac08dd7b60c5`. The final committed runner is byte-identical to that tested artifact. The fake harness and session were removed after the test; the public-safe result summary is [fixtures/observed_wrapper_behavior.json](fixtures/observed_wrapper_behavior.json). Global user settings and the installed v1 guard stayed byte-identical, and all preexisting enrollment markers were retained.
+
+### What this fixes and what it cannot guarantee
+
+The wrapper addresses the observed truncated **child-output** failure by requiring an explicit validated verdict and making external denial depend on exit 2 rather than stdout JSON. The seven-call observation supports this on the tested Claude version and harness, not every possible failure mode or host. It does not prove that a checker inspected its input correctly; a trusted checker that emits a valid but wrong pass is still accepted.
+
+It does not protect against disabled/suppressed hooks, failed or suppressed enrollment, skipped setting sources/hosts, a replaced or corrupted wrapper that exits 0, arbitrary changes to the trusted checker, loss of exit status, or untested termination behavior. A wrapper/interpreter failure still relies on Claude's `onFailure: block` contract. A deliberately spawned descendant of a replaced checker is outside the cleanup guarantee; the shipped checker does not spawn descendants. Codex, browser, web, MCP, other clients, and other machines remain uncovered.
+
+**No live upgrade occurred.** The active Mac still runs the older v1 direct JSON hook. Repository `guard.py`/`manage.py` changed for a future reviewed install, but active user settings and installed source did not. Enabling this wrapper requires separate approval for a safe-checkpoint selective uninstall/test/install; this PR does not authorize it. No new credentials, security bypass, network permissions, or detection rules were introduced.
 
 ## Reproduce locally
 
