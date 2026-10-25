@@ -1,0 +1,28 @@
+{
+  "synthetic_pr": {
+    "checks": {
+      "failed": 0,
+      "pending": 0,
+      "total": 1
+    },
+    "current_commit_reviews": {
+      "bot": 0,
+      "human": 1
+    },
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "merge_authorized": false,
+    "reasons": [],
+    "status": "signals_satisfied",
+    "unresolved_threads": 0
+  },
+  "synthetic_queue": {
+    "default_branch": {
+      "branch": "trunk",
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "merge_authorized": false,
+    "prs": [],
+    "reads": 2,
+    "status": "stable_snapshot"
+  }
+}

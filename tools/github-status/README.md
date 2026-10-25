@@ -1,46 +1,74 @@
 # GitHub status readers
 
-Two read-only Python commands for understanding pull requests. Neither modifies a repository, posts a comment, resolves a thread, or authorizes a merge.
+Use these tools when you want a repeatable readout of a PR's current signals or a stable view of an open PR queue. They read GitHub; they do not post comments, resolve threads, modify branches, or authorize merges.
 
-Requirements: Python 3.10 or later and an installed, authenticated GitHub CLI (`gh`) with read access to the requested repository. Python uses only its standard library. GitHub CLI is a separately installed dependency; its source is not bundled. These files follow the repository's MIT license.
+| Resource | Use it for | Guide |
+| --- | --- | --- |
+| `pr_status.py` | Current-commit reviews, unresolved threads, and checks for one PR | [PR status: commands, output and exits](PR_STATUS.md) |
+| `queue_snapshot.py` | Two matching complete snapshots of open PRs | [Queue snapshot: commands, output and exits](QUEUE_SNAPSHOT.md) |
 
-From this directory:
+## Prerequisites and installation
+
+- Python **3.10 or later**.
+- A separately installed [GitHub CLI](https://cli.github.com/manual/installation), available as `gh` on PATH.
+- An authenticated GitHub identity with access to the selected repository.
+
+No Python packages need installation. Clone or download the repository and run the scripts from its root:
 
 ```sh
-python3 pr_status.py 42 --repo example/demo
-python3 queue_snapshot.py --repo example/demo
+python3 --version
+gh --version
+python3 tools/github-status/pr_status.py --help
+python3 tools/github-status/queue_snapshot.py --help
 ```
 
-`example/demo` is invented. Omit `--repo` to discover the repository from the current checkout. PR numbers are always explicit. API calls use the CLI's configured GitHub host and identity.
+Keep `github_api.py` beside both scripts if copying the tool directory elsewhere. New resources use original instructions and invented examples under the repository's [MIT license](../../LICENSE); the separately installed GitHub CLI has its own license and is not bundled.
 
-## PR status
+## Authentication and permission scope
 
-`pr_status.py` reads a PR's head, all submitted review records, all review threads, and all check/status pages for that exact commit. It rereads the PR header afterward and fails if those signals changed. It separates human and bot review counts at the current commit. Review bodies, titles, usernames, branch names, and thread content are omitted from the report.
+If the CLI is already authenticated, reuse that approved identity. Otherwise the interactive browser flow is:
 
-A success requires an open, non-draft PR, a current-commit approval, the repository's approved review decision, clean mergeability, observed passing/neutral/skipped check results, no pending or failing results, and no unresolved threads. Outdated unresolved threads still block success. For each known reviewer, the latest submitted review at the current commit determines their observed state. A missing author cannot establish approval. This conservative summary does not reproduce every repository ruleset or review-dismissal policy.
+```sh
+gh auth login --hostname github.com --web
+```
 
-| Exit | Meaning |
-| --- | --- |
-| 0 | Observed signals satisfied; human review and merge authorization remain separate |
-| 1 | At least one signal needs attention |
-| 8 | Remaining signals are still waiting, with no known attention item |
-| 2 | Read, validation, or consistency failure; do not treat this as a clean result |
+Run login yourself; it may ask you to select Git protocol and account settings. The readers never log in, alter credentials, or request additional permissions. Do not put a token in a command argument, source file, fixture, screenshot, or issue. If you use an environment-provided credential, configure it privately through your normal credential manager rather than copying an example token.
 
-Absent checks do not count as passing. GitHub may report a skipped check as successful while a particular repository expects stronger evidence; review the actual required-check policy before acting. No command can guarantee that state will remain unchanged after its final read.
+The data needed are repository metadata and refs, PR/review/thread information, and commit check/status results. When choosing fine-grained credentials or an app identity, review repository selection and the **read** permission areas for Metadata, Contents, Pull requests, Commit statuses, and Checks where available. This is a list of required data areas, not a universally tested token recipe: GraphQL field support, credential types, organization approval and host policy can vary. An inaccessible field causes failure rather than a partial success.
 
-## Queue snapshot
+The standard CLI login is broader than these scripts. The [CLI login manual](https://cli.github.com/manual/gh_auth_login) documents `repo`, `read:org`, and `gist` for classic-token login; those scopes are not proof that a credential is read-only. Use your approved least-privilege setup. [GitHub's fine-grained permission reference](https://docs.github.com/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens) describes the individual permission areas. Do not broaden permissions automatically when a read fails.
 
-`queue_snapshot.py` discovers the default branch, paginates all open PRs, verifies each returned commit matches its head, and confirms the default branch did not change while paging. It requires two consecutive identical snapshots with computed mergeability. A clean empty queue also requires two successful reads. Conflicting or blocked PRs may appear in a stable snapshot: **stable means the observations agree, not that the PRs can merge**.
+API calls use the CLI's configured host and identity. From a checkout, omitting `--repo` asks `gh repo view` to discover its repository. For predictable use, pass `--repo owner/repository`; names in the form of URLs are rejected. These tools are tested against GitHub.com; other hosts and policies may behave differently.
 
-The report includes PR numbers, commit IDs, base branch names and summary states. Treat output from private repositories as private. This tool does not collect full checks, review threads, required rules, or deployment policy; use the individual PR reader and normal repository review process for more detail.
+## Agent invocation
 
-`--attempts` defaults to 4 (range 2–20); `--delay` defaults to 1 second (range 0–30). Read errors stop immediately with exit 2. Unknown or changing state that never stabilizes also exits 2. API calls have a 30-second timeout, and pagination has a 1,000-page safety ceiling.
+These are Python commands, not installed skills. Give an agent the tool guide and a bounded read request:
+
+> Read tools/github-status/PR_STATUS.md. Run the PR status reader for PR 2 in walters954/ai-coding. Report the exit code and reasons. Do not post, push, resolve threads, or merge.
+
+Replace the repository and PR number with your authorized target. Public-repository reads are still network calls. Reports from private repositories remain private: the queue output includes base-branch names and commit IDs, while the PR report omits review bodies and usernames.
 
 ## Offline tests and example output
 
+From the repository root:
+
 ```sh
-python3 -m unittest discover -s tests -v
-python3 tests/example_output.py
+python3 -m unittest discover -s tools/github-status/tests -v
+python3 tools/github-status/tests/example_output.py
 ```
 
-Tests use invented responses and make no network calls. The example emits a synthetic PR report and queue snapshot; it never runs `gh`. Pagination, partial responses, moved heads, unresolved reviews, stale approvals, failed checks and changing queue state are covered. Keep real output and authentication data out of commits and shared screenshots.
+Both commands use invented responses and make no network calls. The second emits `synthetic_pr` and `synthetic_queue` reports; see [the saved synthetic output](examples/synthetic-output.json). [fixtures.py](tests/fixtures.py) contains the corresponding synthetic inputs. Pagination, partial reads, changed heads, outdated unresolved threads, stale approvals, failed checks and changing queues are tested.
+
+## Shared troubleshooting and limits
+
+| Symptom | Action |
+| --- | --- |
+| `gh` missing or timed out | Install the CLI or check network connectivity; each CLI call times out after 30 seconds. |
+| Repository cannot be discovered | Run inside the intended checkout or pass `--repo owner/repository`. |
+| GitHub read failed | Check the selected account, repository access, organization approval and credential permissions locally. Raw CLI errors are suppressed because they can contain private context. |
+| Partial/unsupported response | Do not treat it as an empty queue or green PR. Retry after checking access; the API schema or host may differ. |
+| API/rate-limit failure | Stop and wait for access or rate limits to recover; these commands do not automatically expand permissions or retry indefinitely. |
+| Import error for `github_api` | Keep all three Python files in the same directory and run by the documented script path. |
+| Command exits nonzero | Read the tool-specific exit table. Exit 1 can be a valid PR assessment, not a transport failure. |
+
+GraphQL pagination is bounded to 1,000 pages per connection. Connections are fully paginated, but GitHub does not provide a single transaction across all these reads. A later review, check update, new PR, or push can change the answer immediately after the last read. Neither tool replaces the actual repository review, deployment policy, or human merge decision.
