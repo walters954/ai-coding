@@ -33,6 +33,18 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | Skill | What it does |
 | --- | --- |
 | [`codex-code-review`](skills/codex-code-review/SKILL.md) | Runs the OpenAI Codex CLI as an independent, read-only second-opinion review of a diff before it becomes a PR, then triages the findings instead of applying them blindly. |
+| [`diff-explainer`](skills/diff-explainer/SKILL.md) | Turns an agreed diff into an offline HTML explanation and quiz. Includes an [invented example](skills/diff-explainer/example.html). |
+| [`focused-cleanup`](skills/focused-cleanup/SKILL.md) | Improves a small, agreed diff while preserving behavior and documenting tradeoffs. |
+| [`worktree-bootstrap`](skills/worktree-bootstrap/SKILL.md) | Plans setup first; named environment links and dependency installation each require explicit opt-in. |
+
+## GitHub utilities
+
+| Tool | What it does |
+| --- | --- |
+| [`pr_status.py`](tools/github-status/README.md#pr-status) | Reads all review, thread, and check pages for a PR's current commit; unresolved threads block a successful report. |
+| [`queue_snapshot.py`](tools/github-status/README.md#queue-snapshot) | Discovers the default branch and requires two matching snapshots of the open PR queue. |
+
+Both use Python's standard library and the authenticated GitHub CLI. Reports describe observed signals; they never authorize a merge. [Offline tests and synthetic output](tools/github-status/README.md#offline-tests-and-example-output) are included.
 
 ## Projects & Demos
 
@@ -40,7 +52,7 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | --- | --- | --- |
 | [`jev-account-dedupe`](projects/jev-account-dedupe) | CRM Account Deduplication using Jev System One evaluation model on Vercel AI Gateway & TypeSafe AI. Evaluates duplicates with zero generation tokens, ~50–100ms latency, collapsible presentation panels, and live cost comparison vs traditional LLMs. | Next.js 16, TypeScript, TypeSafe AI SDK, Vercel AI SDK, Tailwind CSS |
 
-More to come: worktree setup, close-out, and my `CLAUDE.md` conventions.
+See the [skills guide](skills/README.md) for requirements and usage.
 
 ## Install
 
