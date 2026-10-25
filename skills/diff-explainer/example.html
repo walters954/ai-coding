@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Diff explained: retry counter fix (invented example)</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1b1d22;
+    --muted: #575c68;
+    --border: #d8dbe2;
+    --accent: #2c56c9;
+    --code-bg: #f0f2f5;
+    --del-bg: #fce7e6;
+    --del-text: #8b1d18;
+    --add-bg: #e1f4e6;
+    --add-text: #14572a;
+    --ok: #1a7336;
+    --bad: #b3261e;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111317;
+      --surface: #1a1d23;
+      --text: #e7e9ee;
+      --muted: #a3a8b4;
+      --border: #2f333c;
+      --accent: #8eaaff;
+      --code-bg: #14161b;
+      --del-bg: #3b1d1d;
+      --del-text: #ffb3ab;
+      --add-bg: #16301f;
+      --add-text: #9de3b0;
+      --ok: #72d98f;
+      --bad: #ff8d84;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+  .skip { position: absolute; left: -9999px; top: 0; }
+  .skip:focus { left: 12px; top: 12px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); }
+  header { padding-top: 40px; padding-bottom: 4px; }
+  .eyebrow { margin: 0 0 6px; font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0 0 12px; font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.2; }
+  h2 { margin: 0 0 12px; font-size: 1.35rem; }
+  h3 { margin: 24px 0 8px; font-size: 1.05rem; }
+  p, li { max-width: 72ch; }
+  .scope { color: var(--muted); }
+  nav ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 16px 0 0; padding: 0; }
+  nav a { display: inline-block; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: .9rem; text-decoration: none; }
+  nav a:hover { border-color: var(--accent); }
+  section { margin: 20px 0; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  @media (max-width: 520px) { section { padding: 18px 14px; } }
+  code { font-family: ui-monospace, monospace; font-size: .92em; }
+  :not(pre) > code { padding: 1px 5px; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; }
+  pre { margin: 0; padding: 14px 16px; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; line-height: 1.55; }
+  a:focus-visible, pre:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .compare { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 820px) { .compare { grid-template-columns: 1fr 1fr; } }
+  figure { margin: 0; min-width: 0; }
+  figcaption { margin-bottom: 6px; font-weight: 600; }
+  .hl { display: inline-block; min-width: 100%; }
+  .hl.del { background: var(--del-bg); color: var(--del-text); }
+  .hl.add { background: var(--add-bg); color: var(--add-text); }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0 0; font-size: .9rem; color: var(--muted); }
+  .key::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+  .key.del::before { background: var(--del-bg); border: 1px solid var(--del-text); }
+  .key.add::before { background: var(--add-bg); border: 1px solid var(--add-text); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  thead th { color: var(--muted); font-weight: 600; }
+  .steps li, .risks li { margin-bottom: 8px; }
+  .quiz-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  #score { margin: 0; font-weight: 600; }
+  .quiz { list-style: none; margin: 0; padding: 0; }
+  .q { padding: 18px 0; border-top: 1px solid var(--border); }
+  .q:first-child { border-top: 0; padding-top: 4px; }
+  .q-text { margin: 0 0 10px; font-weight: 600; }
+  .options { display: grid; gap: 8px; }
+  @media (min-width: 640px) { .options { grid-template-columns: 1fr 1fr; } }
+  .opt { min-height: 44px; padding: 10px 12px; font: inherit; text-align: left; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  .opt:hover { border-color: var(--accent); }
+  .opt[aria-pressed="true"] { padding: 9px 11px; border-width: 2px; }
+  .opt.is-correct { border-color: var(--ok); }
+  .opt.is-wrong { border-color: var(--bad); }
+  .opt.is-correct::after { content: " ✓ correct"; color: var(--ok); font-weight: 600; }
+  .opt.is-wrong::after { content: " ✗ not this one"; color: var(--bad); font-weight: 600; }
+  .feedback { min-height: 1.6em; margin: 10px 0 0; }
+  .feedback.ok { color: var(--ok); }
+  .feedback.bad { color: var(--bad); }
+  .secondary { min-height: 40px; padding: 6px 14px; font: inherit; color: var(--accent); background: transparent; border: 1px solid var(--accent); border-radius: 8px; cursor: pointer; }
+  footer { padding-bottom: 40px; font-size: .9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="wrap">
+  <p class="eyebrow">Diff explained &middot; invented example</p>
+  <h1>Retry counter: stop at three calls, fail fast on permanent errors</h1>
+  <p class="scope"><strong>Scope:</strong> one function, <code>fetchWithRetry</code>, in an invented file <code>src/net/retry.js</code>. Committed change only; no staged, unstaged, or untracked files are involved. All code on this page is made up for teaching.</p>
+  <nav aria-label="Sections">
+    <ul>
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#code">Before and after</a></li>
+      <li><a href="#walkthrough">Walkthrough</a></li>
+      <li><a href="#risks">Risks and limits</a></li>
+      <li><a href="#quiz">Check your understanding</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="wrap">
+
+<section id="problem" aria-labelledby="problem-h">
+  <h2 id="problem-h">1. The problem</h2>
+  <p><code>fetchWithRetry</code> should try a request at most <code>maxAttempts = 3</code> times. Two bugs crept in:</p>
+  <ul>
+    <li><strong>Off by one.</strong> The counter starts at zero and the loop runs while <code>attempt &lt;= maxAttempts</code>, so a request that keeps failing is sent <strong>four</strong> times instead of three.</li>
+    <li><strong>Retries everything.</strong> Every error is retried, including permanent ones such as a rejected payload or a missing record. Those can never succeed, so retrying them only adds delay and load.</li>
+  </ul>
+  <p>The fix counts each call as it happens, stops after the third call, and lets permanent errors fail on the first call.</p>
+</section>
+
+<section id="code" aria-labelledby="code-h">
+  <h2 id="code-h">2. Before and after</h2>
+  <div class="compare">
+    <figure>
+      <figcaption>Before</figcaption>
+      <pre tabindex="0" aria-label="Code before the change"><code>async function fetchWithRetry(request, maxAttempts = 3) {
+<span class="hl del">  let attempt = 0;</span>
+<span class="hl del">  while (attempt &lt;= maxAttempts) {</span>
+    try {
+      return await send(request);
+    } catch (err) {
+<span class="hl del">      attempt++;</span>
+<span class="hl del">      if (attempt &gt; maxAttempts) throw err;</span>
+    }
+  }
+}</code></pre>
+    </figure>
+    <figure>
+      <figcaption>After</figcaption>
+      <pre tabindex="0" aria-label="Code after the change"><code>async function fetchWithRetry(request, maxAttempts = 3) {
+<span class="hl add">  let attempts = 0;</span>
+<span class="hl add">  while (true) {</span>
+<span class="hl add">    attempts++;</span>
+    try {
+      return await send(request);
+    } catch (err) {
+<span class="hl add">      const canRetry = isTransient(err) &amp;&amp; attempts &lt; maxAttempts;</span>
+<span class="hl add">      if (!canRetry) throw err;</span>
+    }
+  }
+}</code></pre>
+    </figure>
+  </div>
+  <p class="legend"><span class="key del">Removed or replaced</span><span class="key add">Added or replaced</span></p>
+  <h3>What changed</h3>
+  <ul>
+    <li>The counter is now <code>attempts</code> and is incremented <em>before</em> each call, so it always equals the number of calls made.</li>
+    <li>The limit moved out of the <code>while</code> condition into a single retry decision inside <code>catch</code>.</li>
+    <li>A new <code>isTransient(err)</code> check means permanent errors are never retried.</li>
+  </ul>
+  <p>The classifier is invented too:</p>
+  <pre tabindex="0" aria-label="Invented isTransient helper"><code>function isTransient(err) {
+  return err.code === 'TIMEOUT' || err.status === 503;
+}</code></pre>
+</section>
+
+<section id="walkthrough" aria-labelledby="walk-h">
+  <h2 id="walk-h">3. Walkthrough</h2>
+  <ol class="steps">
+    <li><strong>Start at zero.</strong> <code>attempts</code> begins at 0: no calls have been made yet.</li>
+    <li><strong>Count, then call.</strong> Each loop pass runs <code>attempts++</code> for the call about to happen. During the first call the value is 1; during the third it is 3.</li>
+    <li><strong>Success returns at once.</strong> If <code>send</code> resolves, its result is returned and the loop ends.</li>
+    <li><strong>Decide in one place.</strong> On an error, <code>canRetry</code> is true only when the error is transient <em>and</em> fewer than <code>maxAttempts</code> calls have been made.</li>
+    <li><strong>Otherwise rethrow.</strong> A permanent error, or a transient error on the third call, reaches the caller unchanged.</li>
+  </ol>
+
+  <h3 id="trace-h">Trace: the service times out on every call</h3>
+  <div class="table-wrap">
+    <table aria-labelledby="trace-h">
+      <thead>
+        <tr>
+          <th scope="col">Call</th>
+          <th scope="col">Before: counter after error</th>
+          <th scope="col">Before: decision</th>
+          <th scope="col">After: <code>attempts</code></th>
+          <th scope="col">After: decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">1</th><td>1</td><td>retry (1 &gt; 3 is false)</td><td>1</td><td>retry (1 &lt; 3)</td></tr>
+        <tr><th scope="row">2</th><td>2</td><td>retry</td><td>2</td><td>retry (2 &lt; 3)</td></tr>
+        <tr><th scope="row">3</th><td>3</td><td>retry</td><td>3</td><td>throw (3 &lt; 3 is false)</td></tr>
+        <tr><th scope="row">4</th><td>4</td><td>throw (4 &gt; 3)</td><td>not called</td><td>not called</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Before: four calls. After: three calls.</p>
+
+  <h3>Trace: a permanent error</h3>
+  <p>The first call fails with a 400 &ldquo;invalid payload&rdquo; error. <code>isTransient</code> returns false, so <code>canRetry</code> is false and the error is thrown after exactly one call. Before the fix, the same request was sent four times.</p>
+</section>
+
+<section id="risks" aria-labelledby="risks-h">
+  <h2 id="risks-h">4. Risks and limits</h2>
+  <ul class="risks">
+    <li><strong>No delay between attempts.</strong> Retries fire back to back. During a real outage this adds load; backoff with jitter would be a separate change.</li>
+    <li><strong>Classification decides everything.</strong> If <code>isTransient</code> labels a permanent error as transient, it is retried up to three times; if it misses a transient one, the call fails early.</li>
+    <li><strong>Side effects may repeat.</strong> Retrying a request that is not safe to repeat, such as creating an order, can duplicate it.</li>
+    <li><strong>At least one call is always made.</strong> With <code>maxAttempts</code> of 0 or less, <code>send</code> still runs once and any error is thrown. Validate the option if that matters.</li>
+    <li><strong>Tests worth adding.</strong> Exactly three calls for repeated transient failures; exactly one call for a permanent error; success on the second call returns the value.</li>
+  </ul>
+</section>
+
+<section id="quiz" aria-labelledby="quiz-h">
+  <div class="quiz-bar">
+    <h2 id="quiz-h" style="margin:0">5. Check your understanding</h2>
+    <button type="button" id="reset" class="secondary">Reset answers</button>
+  </div>
+  <p id="score">Answered 0 of 5 &middot; Correct 0</p>
+  <ol class="quiz">
+    <li class="q" data-answer="1" data-explain="The old condition attempt &lt;= maxAttempts allows calls while the counter is 0, 1, 2 and 3: four calls.">
+      <p class="q-text" id="q1">1. Before the fix, the service times out on every call. How many times is <code>send</code> called?</p>
+      <div class="options" role="group" aria-labelledby="q1">
+        <button type="button" class="opt">A. 3</button>
+        <button type="button" class="opt">B. 4</button>
+        <button type="button" class="opt">C. 2</button>
+        <button type="button" class="opt">D. Until the caller cancels</button>
+      </div>
+      <p class="feedback" aria-live="polite"></p>
+    </li>
+    <li class="q" data-answer="3" data-explain="isTransient returns false, so canRetry is false and the error is rethrown after the first call.">
+      <p class="q-text" id="q2">2. After the fix, the first call fails with a permanent &ldquo;invalid payload&rdquo; error. What happens?</p>
+      <div class="options" role="group" aria-labelledby="q2">
+        <button type="button" class="opt">A. It is retried twice more, then thrown</button>
+        <button type="button" class="opt">B. It is retried once, then thrown</button>
+        <button type="button" class="opt">C. The function returns <code>undefined</code></button>
+        <button type="button" class="opt">D. It is thrown immediately after one call</button>
+      </div>
+      <p class="feedback" aria-live="polite"></p>
+    </li>
+    <li class="q" data-answer="0" data-explain="Counting first means attempts equals the number of calls so far inside catch, so attempts &lt; maxAttempts reads naturally.">
+      <p class="q-text" id="q3">3. Why does the new code increment <code>attempts</code> before calling <code>send</code>?</p>
+      <div class="options" role="group" aria-labelledby="q3">
+        <button type="button" class="opt">A. So the counter already equals the number of calls made when the retry decision runs</button>
+        <button type="button" class="opt">B. Because <code>send</code> reads the counter to pick a server</button>
+        <button type="button" class="opt">C. To skip the first call when <code>maxAttempts</code> is 3</button>
+        <button type="button" class="opt">D. So permanent errors are counted twice</button>
+      </div>
+      <p class="feedback" aria-live="polite"></p>
+    </li>
+    <li class="q" data-answer="2" data-explain="The first two failures are transient with attempts at 1 and 2, both below 3, so a third call happens and its result is returned.">
+      <p class="q-text" id="q4">4. After the fix: timeout, timeout, then success. What is the outcome?</p>
+      <div class="options" role="group" aria-labelledby="q4">
+        <button type="button" class="opt">A. 3 calls, then the timeout error is thrown</button>
+        <button type="button" class="opt">B. 2 calls, then the timeout error is thrown</button>
+        <button type="button" class="opt">C. 3 calls, and the successful result is returned</button>
+        <button type="button" class="opt">D. 4 calls, and the successful result is returned</button>
+      </div>
+      <p class="feedback" aria-live="polite"></p>
+    </li>
+    <li class="q" data-answer="1" data-explain="The call cap and the error classification are fixed, and the original error is rethrown. Waiting between attempts is out of scope.">
+      <p class="q-text" id="q5">5. Which risk does this fix leave unaddressed?</p>
+      <div class="options" role="group" aria-labelledby="q5">
+        <button type="button" class="opt">A. A fourth call after three transient failures</button>
+        <button type="button" class="opt">B. Retrying immediately, with no delay between attempts</button>
+        <button type="button" class="opt">C. Retrying errors that can never succeed</button>
+        <button type="button" class="opt">D. Losing the original error when giving up</button>
+      </div>
+      <p class="feedback" aria-live="polite"></p>
+    </li>
+  </ol>
+  <noscript>
+    <p><strong>Answer key</strong> (the interactive quiz needs JavaScript): 1&nbsp;B, 2&nbsp;D, 3&nbsp;A, 4&nbsp;C, 5&nbsp;B.</p>
+  </noscript>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>Invented example for teaching. This page is a single file with inline styles and script, and it makes no network requests.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var questions = document.querySelectorAll('.q');
+  var score = document.getElementById('score');
+  var reset = document.getElementById('reset');
+  var results = [];
+
+  function updateScore() {
+    var answered = 0;
+    var correct = 0;
+    results.forEach(function (r) {
+      if (r !== null) {
+        answered++;
+        if (r) correct++;
+      }
+    });
+    score.textContent = 'Answered ' + answered + ' of ' + questions.length + ' \u00b7 Correct ' + correct;
+  }
+
+  function clearQuestion(q) {
+    q.querySelectorAll('.opt').forEach(function (b) {
+      b.setAttribute('aria-pressed', 'false');
+      b.classList.remove('is-correct', 'is-wrong');
+    });
+    var feedback = q.querySelector('.feedback');
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+  }
+
+  questions.forEach(function (q, qi) {
+    results.push(null);
+    var answer = Number(q.getAttribute('data-answer'));
+    var explain = q.getAttribute('data-explain') || '';
+    var buttons = q.querySelectorAll('.opt');
+    var feedback = q.querySelector('.feedback');
+
+    buttons.forEach(function (btn, bi) {
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', function () {
+        clearQuestion(q);
+        var ok = bi === answer;
+        btn.setAttribute('aria-pressed', 'true');
+        btn.classList.add(ok ? 'is-correct' : 'is-wrong');
+        feedback.textContent = ok ? 'Correct. ' + explain : 'Not quite. Try another option.';
+        feedback.className = 'feedback ' + (ok ? 'ok' : 'bad');
+        results[qi] = ok;
+        updateScore();
+      });
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    questions.forEach(function (q, qi) {
+      clearQuestion(q);
+      results[qi] = null;
+    });
+    updateScore();
+    var first = document.querySelector('.q .opt');
+    if (first) first.focus();
+  });
+
+  updateScore();
+})();
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@
 <h1 align="center">ai-coding</h1>
 
 <p align="center">
-  The Claude Code skills and config I actually use to ship code.
+  Reusable skills and tools for AI-assisted coding.
 </p>
 
 <p align="center">
@@ -33,6 +33,18 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | Skill | What it does |
 | --- | --- |
 | [`codex-code-review`](skills/codex-code-review/SKILL.md) | Runs the OpenAI Codex CLI as an independent, read-only second-opinion review of a diff before it becomes a PR, then triages the findings instead of applying them blindly. |
+| [`diff-explainer`](skills/diff-explainer/README.md) | Turns an agreed diff into an offline HTML explanation and quiz. Includes an [invented example](skills/diff-explainer/example.html). |
+| [`focused-cleanup`](skills/focused-cleanup/README.md) | Improves a small, agreed diff while preserving behavior and documenting tradeoffs. |
+| [`worktree-bootstrap`](skills/worktree-bootstrap/README.md) | Plans setup first; named environment links and dependency installation each require explicit opt-in. |
+
+## GitHub utilities
+
+| Tool | What it does |
+| --- | --- |
+| [`pr_status.py`](tools/github-status/PR_STATUS.md) | Reads all review, thread, and check pages for a PR's current commit; unresolved threads block a successful report. |
+| [`queue_snapshot.py`](tools/github-status/QUEUE_SNAPSHOT.md) | Discovers the default branch and requires two matching snapshots of the open PR queue. |
+
+Both use Python's standard library and the authenticated GitHub CLI. Reports describe observed signals; they never authorize a merge. [Offline tests and synthetic output](tools/github-status/README.md#offline-tests-and-example-output) are included.
 
 ## Projects & Demos
 
@@ -40,7 +52,23 @@ ones that earn their keep in [the newsletter](https://revenueeng.com).
 | --- | --- | --- |
 | [`jev-account-dedupe`](projects/jev-account-dedupe) | CRM Account Deduplication using Jev System One evaluation model on Vercel AI Gateway & TypeSafe AI. Evaluates duplicates with zero generation tokens, ~50–100ms latency, collapsible presentation panels, and live cost comparison vs traditional LLMs. | Next.js 16, TypeScript, TypeSafe AI SDK, Vercel AI SDK, Tailwind CSS |
 
-More to come: worktree setup, close-out, and my `CLAUDE.md` conventions.
+See the [skills guide](skills/README.md) for requirements and usage.
+
+## Quick start for agents
+
+These skill directories are generic rewrites of coding workflows, with names chosen for the reusable versions. Each has a README with requirements, installation, an example prompt, expected results and troubleshooting. From an agent session in this checkout, you can invoke one directly without installing it:
+
+> Read skills/diff-explainer/SKILL.md. Explain the committed changes on this branch against its merge base with the default branch. Exclude staged, unstaged and untracked work. Save the offline result to /tmp/change-explained.html; do not open or publish it.
+
+For cleanup, point the agent at `skills/focused-cleanup/SKILL.md` and name the exact diff. For setup, point it at `skills/worktree-bootstrap/SKILL.md` and request a plan first. When installed in another project, name the skill or provide its installed `SKILL.md` path; discovery and invocation syntax depend on the agent.
+
+Try both GitHub helpers without authentication or network calls:
+
+```sh
+python3 tools/github-status/tests/example_output.py
+```
+
+For real reads, follow the [authentication and permission guide](tools/github-status/README.md#authentication-and-permission-scope), then use the tool's README commands. Real reports from private repositories should stay private.
 
 ## Install
 
